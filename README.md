@@ -23,22 +23,48 @@ Selected characteristics and their quantified targets are in the architecture do
 ## Layout
 
 ```
-src/core/        Sizing arithmetic from the KATA assumptions (A1–A10)
-tests/           Unit tests
+src/core/        Sizing arithmetic and the in-memory sample store
+src/components/  Agent, aggregator, collector, API server, shared HTTP helpers
+src/bin/         Entry points that start each component
+web/             Single-page web UI served by the API server
+tests/           Unit and pipeline tests
 simulation/      Fault-injection suite (R7), stubs for now
 .github/         CI workflow
 ```
 
-## Development
+## Running the smallest version
+
+The system has five parts: simulated agents (one per machine), a site aggregator, the central collector, the API server and the web UI. Pick one of the two ways below. Both open the dashboard at http://localhost:3000.
+
+### Option 1: containers (recommended, nothing to install on your PC except Docker)
+
+```
+docker compose up --build
+```
+
+Then open http://localhost:3000. Stop with `Ctrl+C`, or `docker compose down` to remove the containers.
+
+### Option 2: local Node.js (for development)
+
+Requires Node.js 20 or later.
 
 ```
 npm install
+npm run start:collector     # terminal 1, port 3001
+npm run start:aggregator    # terminal 2, port 3002
+npm run start:agents        # terminal 3, five simulated machines
+npm run start:api           # terminal 4, port 3000
+```
+
+Start the collector first, then the aggregator, the agents and the API. The ports and URLs can be changed with the environment variables `PORT`, `COLLECTOR_URL`, `AGGREGATOR_URL`, `SITE`, `MACHINES` and `INTERVAL_MS`, as set in `docker-compose.yml`.
+
+## Development checks
+
+```
 npm run typecheck
 npm run test:coverage
 npm run test:fault
 ```
-
-Requires Node.js 20 or later.
 
 ## License
 
