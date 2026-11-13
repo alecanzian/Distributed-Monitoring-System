@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Fleet monitoring</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; color: #222; }
+    h1 { font-size: 1.3rem; }
+    #machines { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .machine { border: 2px solid #999; border-radius: 6px; padding: 0.6rem 0.8rem; min-width: 11rem; cursor: pointer; }
+    .machine.ok { border-color: #2a9d4b; }
+    .machine.down { border-color: #c0392b; background: #fdecea; }
+    .machine small { display: block; color: #666; }
+    #detail { margin-top: 1.5rem; }
+    svg { background: #fafafa; border: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <h1>Fleet overview</h1>
+  <div id="machines"></div>
+  <div id="detail"></div>
+
+  <script>
+    const machinesEl = document.getElementById("machines");
+    const detailEl = document.getElementById("detail");
+    const METRIC = "metric_00";
+    let selected = null;
+
+    function render(machines) {
+      machinesEl.innerHTML = "";
+      for (const m of machines) {
+        const card = document.createElement("div");
+        card.className = "machine " + m.status;
+        card.innerHTML = "<strong>" + m.machineId + "</strong><small>" + m.site + " · " + m.status + "</small>";
+        card.onclick = () => { selected = m.machineId; showHistory(m.machineId); };
+        machinesEl.appendChild(card);
+      }
+    }
+
+    async function showHistory(machineId) {
+      const res = await fetch("/api/history?machineId=" + encodeURIComponent(machineId) + "&metric=" + METRIC);
+      const points = await res.json();
+      detailEl.innerHTML = "<h2>" + machineId + " · " + METRIC + " (last 6 h)</h2>";
+      if (points.length < 2) { detailEl.innerHTML += "<p>Not enough data yet.</p>"; return; }
+      const w = 800, h = 200, t0 = points[0].ts, t1 = points[points.length - 1].ts || t0 + 1;
+      const xs = (p) => ((p.ts - t0) / Math.max(1, t1 - t0)) * w;
+      const ys = (p) => h - (p.value / 100) * h;
+      const line = points.map((p) => xs(p).toFixed(1) + "," + ys(p).toFixed(1)).join(" ");
+      detailEl.innerHTML += '<svg width="' + w + '" height="' + h + '"><polyline fill="none" stroke="#2a6fdb" stroke-width="2" points="' + line + '"/></svg>';
+    }
+
+    async function loadSnapshot() {
+      render(await (await fetch("/api/snapshot")).json());
+    }
+
+    loadSnapshot();
+    const events = new EventSource("/api/events");
+    events.addEventListener("snapshot", (e) => {
+      const machines = JSON.parse(e.data);
+      render(machines);
+      if (selected) showHistory(selected);
+    });
+  </script>
+</body>
+</html>
