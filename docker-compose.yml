@@ -1,0 +1,44 @@
+# Run the whole smallest version in containers. Nothing needs to be installed on the host.
+#   docker compose up --build
+#   open http://localhost:3000
+services:
+  collector:
+    build: .
+    command: ["npm", "run", "start:collector"]
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+
+  aggregator:
+    build: .
+    command: ["npm", "run", "start:aggregator"]
+    depends_on:
+      - collector
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: "3002"
+      COLLECTOR_URL: "http://collector:3001"
+
+  agents:
+    build: .
+    command: ["npm", "run", "start:agents"]
+    depends_on:
+      - aggregator
+    environment:
+      AGGREGATOR_URL: "http://aggregator:3002"
+      SITE: "site-a"
+      MACHINES: "5"
+      INTERVAL_MS: "10000"
+
+  api:
+    build: .
+    command: ["npm", "run", "start:api"]
+    depends_on:
+      - collector
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      COLLECTOR_URL: "http://collector:3001"
