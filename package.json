@@ -1,0 +1,21 @@
+{
+  "name": "distributed-monitoring-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Distributed monitoring system for a heterogeneous fleet of machines across several sites (university KATA, Alessandro Canzian, 894004)",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:fault": "vitest run simulation"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
