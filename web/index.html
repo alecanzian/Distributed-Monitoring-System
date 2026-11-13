@@ -42,11 +42,44 @@
       const points = await res.json();
       detailEl.innerHTML = "<h2>" + machineId + " · " + METRIC + " (last 6 h)</h2>";
       if (points.length < 2) { detailEl.innerHTML += "<p>Not enough data yet.</p>"; return; }
-      const w = 800, h = 200, t0 = points[0].ts, t1 = points[points.length - 1].ts || t0 + 1;
-      const xs = (p) => ((p.ts - t0) / Math.max(1, t1 - t0)) * w;
-      const ys = (p) => h - (p.value / 100) * h;
-      const line = points.map((p) => xs(p).toFixed(1) + "," + ys(p).toFixed(1)).join(" ");
-      detailEl.innerHTML += '<svg width="' + w + '" height="' + h + '"><polyline fill="none" stroke="#2a6fdb" stroke-width="2" points="' + line + '"/></svg>';
+
+      // Chart area inside the SVG, leaving room for axis labels.
+      const W = 800, H = 260, left = 50, right = 20, top = 15, bottom = 40;
+      const plotW = W - left - right, plotH = H - top - bottom;
+      const t0 = points[0].ts, t1 = points[points.length - 1].ts;
+      const xOf = (ts) => left + ((ts - t0) / Math.max(1, t1 - t0)) * plotW;
+      const yOf = (v) => top + plotH - (v / 100) * plotH;
+
+      let svg = '<svg width="' + W + '" height="' + H + '" font-size="12" fill="#444">';
+
+      // Horizontal gridlines and value labels (0 to 100, the metric scale).
+      for (const v of [0, 25, 50, 75, 100]) {
+        const y = yOf(v);
+        svg += '<line x1="' + left + '" x2="' + (W - right) + '" y1="' + y + '" y2="' + y + '" stroke="#e3e3e3"/>';
+        svg += '<text x="' + (left - 8) + '" y="' + (y + 4) + '" text-anchor="end">' + v + '</text>';
+      }
+
+      // Vertical ticks every hour, labelled with local time (HH:MM).
+      const hour = 3600 * 1000;
+      const firstTick = Math.ceil(t0 / hour) * hour;
+      for (let t = firstTick; t <= t1; t += hour) {
+        const x = xOf(t);
+        const label = new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        svg += '<line x1="' + x + '" x2="' + x + '" y1="' + top + '" y2="' + (top + plotH) + '" stroke="#f0f0f0"/>';
+        svg += '<text x="' + x + '" y="' + (H - 18) + '" text-anchor="middle">' + label + '</text>';
+      }
+
+      // Axis titles.
+      svg += '<text x="' + (left + plotW / 2) + '" y="' + (H - 2) + '" text-anchor="middle">time (local)</text>';
+      svg += '<text x="12" y="' + (top + plotH / 2) + '" text-anchor="middle" transform="rotate(-90 12 ' + (top + plotH / 2) + ')">value (0–100)</text>';
+
+      // The data line.
+      const line = points.map((p) => xOf(p.ts).toFixed(1) + "," + yOf(p.value).toFixed(1)).join(" ");
+      svg += '<polyline fill="none" stroke="#2a6fdb" stroke-width="2" points="' + line + '"/>';
+      svg += '</svg>';
+
+      const last = points[points.length - 1].value.toFixed(2);
+      detailEl.innerHTML += svg + '<p>Latest value: <strong>' + last + '</strong> · ' + points.length + ' points</p>';
     }
 
     async function loadSnapshot() {
